@@ -1,0 +1,7 @@
+,surface,series,order_surfaces,isBasement,color,vertices,edges,id
+4,Main_Fault,Fault_Series,1,False,#527682,,,1
+0,Shale,Strat_Series,1,False,#015482,,,2
+1,Sandstone_1,Strat_Series,2,False,#9f0052,,,3
+2,Siltstone,Strat_Series,3,False,#ffbe00,,,4
+3,Sandstone_2,Strat_Series,4,False,#728f02,,,5
+5,basement,Strat_Series,5,True,#ff3f20,,,6
