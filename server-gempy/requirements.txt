@@ -1,0 +1,18 @@
+# geomodel-service
+Gempy==2.1.1
+
+
+# RESTapi
+Flask==1.0.2
+Flask-RESTful==0.3.7
+Flask-Testing==0.7.1
+jsonschema==3.2.0
+marshmallow==3.5.1
+werkzeug==0.16.0  # due to error in falsk_caching
+flask-cors==3.0.7
+
+
+# Developement
+flake8===3.7.7
+mypy==0.770
+autopep8==1.5
