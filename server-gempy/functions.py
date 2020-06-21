@@ -50,7 +50,7 @@ def update_series(geo_model, series_df):
 
     # set new state
     series_df.sort_index()
-    new_series = series_list = series_df['name'].to_list()
+    new_series = series_df['name'].to_list()
     geo_model.add_series(new_series)
     # HOTFIX
     try:    
