@@ -68,6 +68,46 @@ def update_series(geo_model, series_df):
 
         pass
 
+    print('HOTFIX in update_series()')
+    
+def update_series_and_set_faults(geo_model, series_df):
+    """Updates series of the geo-model to the one stored in data.
+
+    Deletes currently existing series in geo_model, sets series passed in
+    series_df and sets faults.
+    Note: TO_DELETE added as empty series throw an error;
+
+    Args:
+        geo_model = The geo_model
+        series_df: DataFrame = containing series data
+    """
+
+    # remove old state  # gempy does not allow emtpy sereies
+    old_series = geo_model.series.df.index.to_list()
+    geo_model.add_series(series_list=['TO_DELETE'])
+
+    try:
+
+        geo_model.delete_series(old_series)
+
+    except:
+
+        pass
+
+    # set new state
+    series_df.sort_index()
+    new_series = series_df['name'].to_list()
+    geo_model.add_series(new_series)
+
+    # HOTFIX
+    try:
+
+        geo_model.delete_series(['TO_DELETE'])
+        
+    except:
+
+        pass
+
     # set faults
     if np.any(series_df['isfault']):
 
@@ -78,6 +118,30 @@ def update_series(geo_model, series_df):
 
 
 def update_surfaces(geo_model, surfaces_df):
+    """Updates surfaces of the geo-model to the one stored in data.
+
+    Deletes currently existing surfaces in geo_model and sets surfaces passed
+    in surfaces_df.
+    Loops over surfaces to map them to series.
+
+    Args:
+        geo_model = The geo_model
+        series_df: DataFrame = containing surface data
+    """
+
+    # remove old state
+    old_surfaces = geo_model.surfaces.df['surface'].to_list()
+    try:
+        geo_model.delete_surfaces(old_surfaces)
+    except:
+        print('HOTFIX in update_surfaces()')
+
+    # set new state
+    surfaces_df.sort_index()
+    new_surfaces = surfaces_df['name'].to_list()
+    geo_model.add_surfaces(new_surfaces)
+        
+def update_surfaces_and_map_to_series(geo_model, surfaces_df):
     """Updates surfaces of the geo-model to the one stored in data.
 
     Deletes currently existing surfaces in geo_model and sets surfaces passed
