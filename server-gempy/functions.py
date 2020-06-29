@@ -1,4 +1,5 @@
 import copy
+from operator import itemgetter  # type: ignore
 
 import gempy as gp
 import numpy as np
@@ -69,52 +70,6 @@ def update_series(geo_model, series_df):
         pass
 
     print('HOTFIX in update_series()')
-    
-def update_series_and_set_faults(geo_model, series_df):
-    """Updates series of the geo-model to the one stored in data.
-
-    Deletes currently existing series in geo_model, sets series passed in
-    series_df and sets faults.
-    Note: TO_DELETE added as empty series throw an error;
-
-    Args:
-        geo_model = The geo_model
-        series_df: DataFrame = containing series data
-    """
-
-    # remove old state  # gempy does not allow emtpy sereies
-    old_series = geo_model.series.df.index.to_list()
-    geo_model.add_series(series_list=['TO_DELETE'])
-
-    try:
-
-        geo_model.delete_series(old_series)
-
-    except:
-
-        pass
-
-    # set new state
-    series_df.sort_index()
-    new_series = series_df['name'].to_list()
-    geo_model.add_series(new_series)
-
-    # HOTFIX
-    try:
-
-        geo_model.delete_series(['TO_DELETE'])
-        
-    except:
-
-        pass
-
-    # set faults
-    if np.any(series_df['isfault']):
-
-        fault_series = series_df[series_df['isfault']]['name']
-        geo_model.set_is_fault(fault_series)
-
-    print('HOTFIX in update_series()')
 
 
 def update_surfaces(geo_model, surfaces_df):
@@ -140,40 +95,19 @@ def update_surfaces(geo_model, surfaces_df):
     surfaces_df.sort_index()
     new_surfaces = surfaces_df['name'].to_list()
     geo_model.add_surfaces(new_surfaces)
-        
-def update_surfaces_and_map_to_series(geo_model, surfaces_df):
-    """Updates surfaces of the geo-model to the one stored in data.
 
-    Deletes currently existing surfaces in geo_model and sets surfaces passed
-    in surfaces_df.
-    Loops over surfaces to map them to series.
 
-    Args:
-        geo_model = The geo_model
-        series_df: DataFrame = containing surface data
-    """
+def creat_mapping_object(surfaces_df, series_df):
 
-    # remove old state
-    old_surfaces = geo_model.surfaces.df['surface'].to_list()
-    try:
-        geo_model.delete_surfaces(old_surfaces)
-    except:
-        print('HOTFIX in update_surfaces()')
+    surfaces_df.sort_values(by=['order_surface'])
+    mapping_object = {}
+    for index, row in series_df.iterrows():
 
-    # set new state
-    surfaces_df.sort_index()
-    new_surfaces = surfaces_df['name'].to_list()
-    geo_model.add_surfaces(new_surfaces)
+        series_name = row['name']
+        categories = surfaces_df[surfaces_df['serie'] == series_name]['name'].astype('category')
+        mapping_object[series_name] = categories
 
-    # map to series
-    for index, row in surfaces_df.iterrows():
-
-        surface = row['name']
-        serie = row['serie']
-        gp.map_series_to_surfaces(
-            geo_model,
-            {serie: surface}
-        )
+    return mapping_object
 
 
 def check_setup_single_realization(geo_model):
@@ -308,6 +242,113 @@ def run_realizations(
 
     return list_section_data
 
+
+def compute_boolean_matrix_for_section_surface_top(
+    geo_model=gp.Model,
+    surface_index=int
+):
+    """ Compute points in the section grid that mark the transtion of one
+    surface to another.
+
+    Args:
+        geo_model = geo_model instance
+        surface_index = index of wanted surface
+
+    Return:
+        np.array() = Boolen matrix represention scalar-field transitions of
+            surface-i top;
+    """
+
+    # get data of current geo_model
+    section_shape = geo_model.grid.sections.resolution[0]
+    section_scalar_field_values = geo_model.solutions.sections[1]
+
+    # get scalar field level boundaries seperating lithologies
+    # marking surface tops from bottom to top
+    level = geo_model.solutions.scalar_field_at_surface_points[0]
+
+    # reshape 1D NpArray to original section shape
+    section_scalar_field_values_reshaped = section_scalar_field_values[0, :] \
+        .reshape(section_shape) \
+        .T
+
+    # find scalar field values biggern then level-boundary value
+    bigger_level_i = section_scalar_field_values_reshaped > level[surface_index]
+
+    # use matrix shifting along x0axis to find top-surface
+    bigger_level_i_0 = bigger_level_i[1:, :]
+    bigger_level_i_1 = bigger_level_i[:-1, :]
+    bigger_level_i_boundary = bigger_level_i_0 ^ bigger_level_i_1
+
+    return bigger_level_i_boundary   
+    
+
+def compute_setction_grid_coordinates(geo_model, extent):
+
+    # extract data
+    section_df = geo_model.grid.sections.df.loc['section']
+    point_0 = np.array(section_df['start'])
+    point_1 = np.array(section_df['stop'])
+    resolution = np.array(section_df['resolution'])
+    distance = np.array(section_df['dist'])
+    z_min, z_max = itemgetter('z_min', 'z_max')(extent)
+
+    # vector pointing from point_0 to point_1
+    vector_p0_p1 = point_1 - point_0
+
+    # normalizae vector
+    vector_p1_p2_normalizaed = vector_p0_p1 / np.linalg.norm(vector_p0_p1)
+
+    # steps on line between points
+    steps = np.linspace(0, distance, resolution[0])
+
+    # calculate xy-coordinates on line between point_0 and point_1
+    xy_coord_on_line_p0_p1 = point_0.reshape(2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
+    print(xy_coord_on_line_p0_p1.shape)
+
+    # get xvals and yvals
+    xvals = xy_coord_on_line_p0_p1[0]
+    yvals = xy_coord_on_line_p0_p1[1]
+
+    # stretching whole extent
+    zvals = np.linspace(z_min, z_max, resolution[1])
+
+    # meshgrids to get grid coordinates
+    X, Z = np.meshgrid(xvals, zvals)
+    Y, Z = np.meshgrid(yvals, zvals)
+
+    return np.stack((X, Y, Z))
+    
+    
+def extract_section_coordinates_of_surface(
+    geo_model,
+    surface_index,
+    section_grid_coordinates
+) -> np.ndarray:
+    """Get coordinates of surface. 
+    
+    Args:
+        geo_model = Server geo model instance.
+        surface_index = index on surface on surface stack
+        section_grid_coordinates = coordinates of section grid
+
+    Returns
+        (3, n_points) of surface coordinates 
+    """
+
+    # calculate surface-boolen-matrix "B"
+    B = compute_boolean_matrix_for_section_surface_top(
+        geo_model=geo_model,
+        surface_index=surface_index
+    )
+
+    # extract data  # [X|Y|Z][SliceMissingRow#MatrixShifting][BoolenMatrix]
+    x_coords = section_grid_coordinates[0][:-1, :][B]
+    y_coords = section_grid_coordinates[1][:-1, :][B]
+    z_coords = section_grid_coordinates[2][:-1, :][B]
+
+    return np.stack((x_coords, y_coords, z_coords), axis=0)
+    
 
 def process_list_section_data(list_section_data):
 
