@@ -1,6 +1,8 @@
 import numpy as np  # type: ignore
 import gempy as gp  # type: ignore
 from operator import itemgetter  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
+
 
 
 def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
@@ -100,3 +102,37 @@ def compute_setction_grid_coordinates(geo_model, extent):
     Y, Z = np.meshgrid(yvals, zvals)
 
     return np.stack((X, Y, Z))
+
+
+def get_tops_coordinates(boolen_matrix_of_tops, section_coordinates):
+
+    tops_dict = {}
+    for key in boolen_matrix_of_tops.keys():
+
+        boolean_matrix_top = boolen_matrix_of_tops[key]
+        xyz_coord_dict = {
+            'xvals': section_coordinates[0,:-1,:][boolean_matrix_top].tolist(),
+            'yvasl': section_coordinates[1,:-1,:][boolean_matrix_top].tolist(),
+            'zvals': section_coordinates[2,:-1,:][boolean_matrix_top].tolist()
+        }
+        tops_dict[key] = xyz_coord_dict 
+
+    return tops_dict
+
+
+def plot_tops(tops_coordinates, name, xmin, xmax, ymin, ymax):
+
+    fig, ax = plt.subplots()
+    for key in tops_coordinates.keys():
+
+        xyz = tops_coordinates[key]
+        ax.plot(
+            xyz['xvals'],
+            xyz['zvals'],
+            'o'
+        )
+
+    ax.set_xlim(xmin,xmax)
+    ax.set_ylim(ymin,ymax)
+    file_location = './snapshots/' + name + '.png'
+    fig.savefig(file_location)
