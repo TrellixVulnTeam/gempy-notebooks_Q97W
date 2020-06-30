@@ -1,5 +1,6 @@
-import numpy as np
-import gempy as gp
+import numpy as np  # type: ignore
+import gempy as gp  # type: ignore
+from operator import itemgetter  # type: ignore
 
 
 def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
@@ -63,3 +64,39 @@ def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
             matrix_shifts_results[f'{i}-{ii}'] = B01
 
     return matrix_shifts_results
+
+
+def compute_setction_grid_coordinates(geo_model, extent):
+
+    # extract data
+    section_df = geo_model.grid.sections.df.loc['section']
+    point_0 = np.array(section_df['start'])
+    point_1 = np.array(section_df['stop'])
+    resolution = np.array(section_df['resolution'])
+    distance = np.array(section_df['dist'])
+    z_min, z_max = itemgetter('z_min', 'z_max')(extent)
+
+    # vector pointing from point_0 to point_1
+    vector_p0_p1 = point_1 - point_0
+
+    # normalizae vector
+    vector_p1_p2_normalizaed = vector_p0_p1 / np.linalg.norm(vector_p0_p1)
+
+    # steps on line between points
+    steps = np.linspace(0, distance, resolution[0])
+
+    # calculate xy-coordinates on line between point_0 and point_1
+    xy_coord_on_line_p0_p1 = point_0.reshape(2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
+
+    # get xvals and yvals
+    xvals = xy_coord_on_line_p0_p1[0]
+    yvals = xy_coord_on_line_p0_p1[1]
+
+    # stretching whole extent
+    zvals = np.linspace(z_min, z_max, resolution[1])
+
+    # meshgrids to get grid coordinates
+    X, Z = np.meshgrid(xvals, zvals)
+    Y, Z = np.meshgrid(yvals, zvals)
+
+    return np.stack((X, Y, Z))
