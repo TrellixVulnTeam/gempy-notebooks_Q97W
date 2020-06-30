@@ -46,3 +46,5 @@ def check_setup_single_realization(geo_model):
             if len_df < 2:
 
                 raise ValueError(f'Each surface needs at least 2 surface points.')
+
+    return True
