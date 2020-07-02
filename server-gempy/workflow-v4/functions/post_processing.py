@@ -4,7 +4,6 @@ from operator import itemgetter  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 
 
-
 def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
     """ Compute points in the section grid that mark the transtion of one
     surface to another.
@@ -18,9 +17,6 @@ def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
             surface-i top;
     """
 
-    # get faults if any
-    faults = list(geo_model.faults.df[geo_model.faults.df['isFault'] == True].index)
-
     # get start and end of section in grid scalar vals array
     arr_len_0, arr_len_n = geo_model.grid.sections.get_section_args('section')
 
@@ -28,14 +24,8 @@ def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
     # get shape of section  # 1st and only one here as only one section present.
     section_shape = geo_model.grid.sections.resolution[0]
     # extract section scalar values from solutions.sections# [series,serie_pos_0:serie_pos_n]
-    section_scalar_field_values = geo_model.solutions.sections[1][:,arr_len_0:arr_len_n]
-    # get extent
-    extent = [
-        0,
-        geo_model.grid.sections.dist[0][0],
-        geo_model.grid.regular_grid.extent[4],
-        geo_model.grid.regular_grid.extent[5]
-    ]
+    section_scalar_field_values = geo_model.solutions.sections[1][:,
+                                                                  arr_len_0:arr_len_n]
 
     # number scalar field blocks
     n_scalar_field_blocks = section_scalar_field_values.shape[0]
@@ -45,10 +35,10 @@ def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
     for i in range(n_scalar_field_blocks):
 
         # scalarfield values of scalarfield_block-i
-        block = section_scalar_field_values[i,:]
-        # ??? level 
+        block = section_scalar_field_values[i, :]
+        # ??? level
         level = geo_model.solutions.scalar_field_at_surface_points[i][np.where(
-                geo_model.solutions.scalar_field_at_surface_points[i] != 0)]
+            geo_model.solutions.scalar_field_at_surface_points[i] != 0)]
         # ??? calulcate scalarfeild levels
         levels = np.insert(level, 0, block.max())
         # extract and reshape scalar field values
@@ -88,7 +78,8 @@ def compute_setction_grid_coordinates(geo_model, extent):
     steps = np.linspace(0, distance, resolution[0])
 
     # calculate xy-coordinates on line between point_0 and point_1
-    xy_coord_on_line_p0_p1 = point_0.reshape(2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
+    xy_coord_on_line_p0_p1 = point_0.reshape(
+        2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
 
     # get xvals and yvals
     xvals = xy_coord_on_line_p0_p1[0]
@@ -109,13 +100,16 @@ def get_tops_coordinates(boolen_matrix_of_tops, section_coordinates):
     tops_dict = {}
     for key in boolen_matrix_of_tops.keys():
 
-        boolean_matrix_top = boolen_matrix_of_tops[key]
+        # boolen matrix transpose  # points get extracted top to bottom,
+        # leading to a oder that resulats on a zick-zack-line. Therfore
+        # transpose section-coordinate matrix and boolen matrix;
+        B_T = boolen_matrix_of_tops[key].T
         xyz_coord_dict = {
-            'xvals': section_coordinates[0,:-1,:][boolean_matrix_top].tolist(),
-            'yvasl': section_coordinates[1,:-1,:][boolean_matrix_top].tolist(),
-            'zvals': section_coordinates[2,:-1,:][boolean_matrix_top].tolist()
+            'xvals': section_coordinates[0, :-1, :].T[B_T].tolist(),
+            'yvasl': section_coordinates[1, :-1, :].T[B_T].tolist(),
+            'zvals': section_coordinates[2, :-1, :].T[B_T].tolist()
         }
-        tops_dict[key] = xyz_coord_dict 
+        tops_dict[key] = xyz_coord_dict
 
     return tops_dict
 
@@ -129,10 +123,10 @@ def plot_tops(tops_coordinates, name, xmin, xmax, ymin, ymax):
         ax.plot(
             xyz['xvals'],
             xyz['zvals'],
-            'o'
+            '--'
         )
 
-    ax.set_xlim(xmin,xmax)
-    ax.set_ylim(ymin,ymax)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
     file_location = './snapshots/' + name + '.png'
     fig.savefig(file_location)

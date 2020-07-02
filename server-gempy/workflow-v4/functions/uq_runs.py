@@ -47,6 +47,7 @@ def run_realizations(
 
     # Storage for calucalted ralizations
     list_section_data = []
+    lst_boolen_tops_dicts = {}
 
     # Calculate realizations
     for i in range(n_realizations):
@@ -67,7 +68,6 @@ def run_realizations(
 
         # update to interpolator
         geo_model.update_to_interpolator()
-
         # Compute solution
         # TODO: Fix bug!
         # till here: until 90.1 ms for 1 realizations
@@ -81,9 +81,7 @@ def run_realizations(
                                      .solutions
                                      .sections[0][0]
                                      .reshape(section['resolution'])
-                                     )
-
-            
+                                     )            
         # collect extracted section data
         list_section_data.append(geo_model
                                  .solutions
