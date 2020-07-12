@@ -3,6 +3,7 @@ from operator import itemgetter  # type: ignore
 
 import gempy as gp
 import numpy as np
+import pandas as pd
 import scipy.stats as ss
 
 
@@ -64,7 +65,7 @@ def update_series(geo_model, series_df):
     try:
 
         geo_model.delete_series(['TO_DELETE'])
-        
+
     except:
 
         pass
@@ -104,7 +105,8 @@ def creat_mapping_object(surfaces_df, series_df):
     for index, row in series_df.iterrows():
 
         series_name = row['name']
-        categories = surfaces_df[surfaces_df['serie'] == series_name]['name'].astype('category')
+        categories = surfaces_df[surfaces_df['serie']
+                                 == series_name]['name'].astype('category')
         mapping_object[series_name] = categories
 
     return mapping_object
@@ -113,7 +115,7 @@ def creat_mapping_object(surfaces_df, series_df):
 def check_setup_single_realization(geo_model):
 
     print('Run realizations setup checks until stable workflow.')
-    
+
     # check if surface_points are within geo-model-extent
     current_extent = geo_model.grid.regular_grid.extent
     if not (
@@ -124,8 +126,9 @@ def check_setup_single_realization(geo_model):
         current_extent[4] <= np.min(geo_model.surface_points.df['Z'].values) and
         current_extent[5] >= np.max(geo_model.surface_points.df['Z'].values)
     ):
-        raise ValueError(f'Some surface-poins are not within geo-model-extent-bounds')
-        
+        raise ValueError(
+            f'Some surface-poins are not within geo-model-extent-bounds')
+
     # check if orientations are within geo-model-extent
     if not (
         current_extent[0] <= np.min(geo_model.orientations.df['X'].values) and
@@ -135,44 +138,46 @@ def check_setup_single_realization(geo_model):
         current_extent[4] <= np.min(geo_model.orientations.df['Z'].values) and
         current_extent[5] >= np.max(geo_model.orientations.df['Z'].values)
     ):
-        raise ValueError(f'Some orientations are not within geo-model-extent-bounds')
-    
+        raise ValueError(
+            f'Some orientations are not within geo-model-extent-bounds')
+
     # check if at least one orientaion per series
     orientation_series = geo_model.orientations.df['series'].unique()
     geo_model_series = list(geo_model.series.df.index)
     if not all([serie in geo_model_series for serie in orientation_series]):
-        
+
         raise ValueError(f'Some series have no orientaion')
-    
-    
+
     # check if at least two surface-points per surface
     surfaces_surface_points = geo_model.surface_points.df
     surfaces_geo_model = list(geo_model.surfaces.df['surface'])
     for surface in surfaces_geo_model:
 
         if not surface == 'basement':
-            len_df = len(surfaces_surface_points[surfaces_surface_points['surface'] == surface])
+            len_df = len(
+                surfaces_surface_points[surfaces_surface_points['surface'] == surface])
             if len_df < 2:
 
-                raise ValueError(f'Each surface needs at least 2 surface points.')
+                raise ValueError(
+                    f'Each surface needs at least 2 surface points.')
 
 
 def manipulate_surface_points_inplace(surface_points_copy, surface_points_original_df):
     """Manipulates the surface_points_copy dataframe.
-    
+
         Samples X, Y, Z values form the original DataFrame and thier
         respective distribution types and parameters.\
         Potential update:
             - Sampling parameter per axis i.e. param1_x, param1_y, ...
             - Diffenrent sampling types i.e. normal, uniformal, ...
-    
+
         Args:
             surface_points_copy: DataFrame = copy of the original geological
                 input data surface-points DataFrame.
             surface_points_original_df: DataFrame = original geological input data
                 surface-points DataFrame.
     """
-    
+
     surface_points_copy['X'] = ss.norm.rvs(
         loc=surface_points_original_df['X'].values,
         scale=surface_points_original_df['param1'].values)
@@ -182,6 +187,7 @@ def manipulate_surface_points_inplace(surface_points_copy, surface_points_origin
     surface_points_copy['Z'] = ss.norm.rvs(
         loc=surface_points_original_df['Z'].values,
         scale=surface_points_original_df['param1'].values)
+
 
 def run_realizations(
     geo_model,
@@ -202,14 +208,15 @@ def run_realizations(
     for i in range(n_realizations):
 
         print(f'Realization: {i}')
-        
+
         # manipulate surface_points_copy in place
         manipulate_surface_points_inplace(
             surface_points_copy=surface_points_copy,
             surface_points_original_df=surface_points_original_df)
-        
+
         # Set manipulated surface points
-        geo_model.set_surface_points(surface_points_copy, update_surfaces=False)
+        geo_model.set_surface_points(
+            surface_points_copy, update_surfaces=False)
         # geo_model.set_orientations(orientations_original_df, update_surfaces=False)
 
         # update to interpolator
@@ -232,7 +239,6 @@ def run_realizations(
                                      .reshape(section['resolution'])
                                      )
 
-            
         # collect extracted section data
         list_section_data.append(geo_model
                                  .solutions
@@ -280,8 +286,8 @@ def compute_boolean_matrix_for_section_surface_top(
     bigger_level_i_1 = bigger_level_i[:-1, :]
     bigger_level_i_boundary = bigger_level_i_0 ^ bigger_level_i_1
 
-    return bigger_level_i_boundary   
-    
+    return bigger_level_i_boundary
+
 
 def compute_setction_grid_coordinates(geo_model, extent):
 
@@ -303,7 +309,8 @@ def compute_setction_grid_coordinates(geo_model, extent):
     steps = np.linspace(0, distance, resolution[0])
 
     # calculate xy-coordinates on line between point_0 and point_1
-    xy_coord_on_line_p0_p1 = point_0.reshape(2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
+    xy_coord_on_line_p0_p1 = point_0.reshape(
+        2, 1) + vector_p1_p2_normalizaed.reshape(2, 1) * steps.ravel()
     print(xy_coord_on_line_p0_p1.shape)
 
     # get xvals and yvals
@@ -318,15 +325,15 @@ def compute_setction_grid_coordinates(geo_model, extent):
     Y, Z = np.meshgrid(yvals, zvals)
 
     return np.stack((X, Y, Z))
-    
-    
+
+
 def extract_section_coordinates_of_surface(
     geo_model,
     surface_index,
     section_grid_coordinates
 ) -> np.ndarray:
     """Get coordinates of surface. 
-    
+
     Args:
         geo_model = Server geo model instance.
         surface_index = index on surface on surface stack
@@ -348,7 +355,7 @@ def extract_section_coordinates_of_surface(
     z_coords = section_grid_coordinates[2][:-1, :][B]
 
     return np.stack((x_coords, y_coords, z_coords), axis=0)
-    
+
 
 def process_list_section_data(list_section_data):
 
@@ -366,7 +373,7 @@ def count_lithology_occurrences_over_realizations(
         lithology_ids,
         section
 ):
-    
+
     count_array = np.empty((
         section['resolution'][0],
         section['resolution'][1],
@@ -385,3 +392,37 @@ def calculate_information_entropy(count_array, n_realizations):
     # Calculate information entropy
     probability_array = count_array / n_realizations
     return ss.entropy(probability_array, axis=2)
+
+
+def did_topology_update(
+        series_hash_old,
+        series_df,
+        surfaces_hash_old,
+        surfaces_df
+):
+
+    # get hashed
+    series_hash_new = pd.util.hash_pandas_object(series_df)
+    surfaces_hash_new = pd.util.hash_pandas_object(surfaces_df)
+
+    # variable if cahnged
+    did_change = False
+
+    # test if series and surfaces where used already
+    # If yes, there hash exists, otherwise thier hashes are NONE
+    if not (all(series_hash_old) and all(surfaces_hash_old)):
+
+        # if they get instantiated, they change form None to hash
+        did_change = True
+
+    # check if series and/or surfaces changed
+    if not (
+        all(series_hash_old == series_hash_new)
+        and all(surfaces_hash_old == surfaces_hash_new)
+    ):
+
+        # if one or both changed
+        did_change = True
+
+    # return true if series and
+    return did_change
