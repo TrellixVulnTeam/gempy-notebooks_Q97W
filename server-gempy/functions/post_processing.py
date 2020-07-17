@@ -2,6 +2,7 @@ import numpy as np  # type: ignore
 import gempy as gp  # type: ignore
 from operator import itemgetter  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
+from skimage import measure  # type: ignore
 
 
 def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
@@ -56,6 +57,83 @@ def compute_boolean_matrix_for_section_surface_top(geo_model=gp.Model):
             matrix_shifts_results[f'{i}-{ii}'] = B01
 
     return matrix_shifts_results
+
+
+def compute_section_contours(geo_model=gp.Model):
+    """ Computes section contouts based on scalarfield
+
+    Args:
+        geo_model = geo_model instance
+        surface_index = index of wanted surface
+
+    Return:
+        np.array() = Boolen matrix represention scalar-field transitions of
+            surface-i top;
+    """
+
+    # get start and end of section in grid scalar vals array
+    arr_len_0, arr_len_n = geo_model.grid.sections.get_section_args('section')
+
+    # CAUTION: if more section present they have to be indexexed accrodingly;
+    # get shape of section  # 1st and only one here as only one section present.
+    section_shape = geo_model.grid.sections.resolution[0]
+    # extract section scalar values from solutions.sections# [series,serie_pos_0:serie_pos_n]
+    section_scalar_field_values = geo_model.solutions.sections[1][:,
+                                                                  arr_len_0:arr_len_n]
+
+    # number scalar field blocks
+    n_scalar_field_blocks = section_scalar_field_values.shape[0]
+    # creat a dictionary to assemble all scalat field boolen matrices shifts
+    # extract transition towards current level
+    contours = {}
+    for i in range(n_scalar_field_blocks):
+
+        # scalarfield values of scalarfield_block-i
+        block = section_scalar_field_values[i, :]
+        # ??? level
+        level = geo_model.solutions.scalar_field_at_surface_points[i][np.where(
+            geo_model.solutions.scalar_field_at_surface_points[i] != 0)]
+        # ??? calulcate scalarfeild levels
+        levels = np.insert(level, 0, block.max())
+        # extract and reshape scalar field values
+        scalar_field = block.reshape(section_shape)
+        # loop over levels to extract tops present within current scalar field
+        for ii in range(len(levels)):
+
+            # get top name
+            top_name = geo_model.surfaces.df['surface'][ii]
+            # Find contour
+            contour = measure.find_contours(scalar_field, levels[ii])
+            # add contour to contoures if there are some
+            if len(contour) > 0:
+
+                contours[top_name] = contour[0]
+
+    return contours
+
+
+def process_section_contours_for_konva(contours):
+
+    contours_konva = {}
+    for key in contours:
+
+        contours_konva[key] = contours[key].flatten().tolist()
+
+    return contours_konva
+
+
+def get_line_extrema(xs, ys):
+
+    ys_slope = ys[1::] - ys[:-1]
+
+    ys_slope_positiv = ys_slope < 0
+    ys_slope_negative = ys_slope >= 0
+
+    ys_slope_extremes = ~(ys_slope_positiv[:-1] ^ ys_slope_negative[1:])
+    xs_extrems, ys_extrems = xs[1:-1][ys_slope_extremes], ys[1:-1][ys_slope_extremes]
+
+    return xs_extrems, ys_extrems
+
 
 
 def compute_setction_grid_coordinates(geo_model, extent):
