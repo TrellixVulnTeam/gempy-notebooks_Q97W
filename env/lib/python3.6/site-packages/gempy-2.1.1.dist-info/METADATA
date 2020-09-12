@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: gempy
+Version: 2.1.1
+Summary: An Open-source, Python-based 3-D structural geological modeling software.
+Home-page: https://github.com/cgre-aachen/gempy
+Author: Miguel de la Varga, Elisa Heim, Alexander Schaaf, Fabian Stamm, Florian Wellmann
+Author-email: varga@aices.rwth-aachen.de
+License: LGPL v3
+Download-URL: https://github.com/cgre-aachen/gempy/archive/2.0.0tar.gz
+Keywords: geology,3-D modeling,structural geology,uncertainty
+Platform: UNKNOWN
+Requires-Dist: cython
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Requires-Dist: theano
+Requires-Dist: scikit-image
+Requires-Dist: seaborn
+Requires-Dist: nptyping
+
+UNKNOWN
+
+
